@@ -18,8 +18,73 @@ describe('Action', () => {
 
       spyOn(scene, 'draw').and.callThrough();
       spyOn(actor, 'draw');
+   });
 
-      
+   describe('queues', () => {
+      it('can add an action', () => {
+        expect(actor.actionQueue.getActions().length).toBe(0);
+
+        actor.actions.blink(200, 200);
+        actor.update(engine, 0);
+
+        expect(actor.actionQueue.getActions().length).toBe(1);
+      });
+
+      it('can clear all actions', () => {
+        actor.actions.blink(200, 200);
+        actor.actions.blink(200, 200);
+        actor.update(engine, 0);
+
+        expect(actor.actionQueue.getActions().length).toBe(2);
+
+        actor.actionQueue.clearActions();
+
+        expect(actor.actionQueue.getActions().length).toBe(0);
+      });
+
+      it('can add an action immediately to an empty queue', () => {
+        actor.actionQueue.addImmediately(new ex.Actions.Blink(actor, 200, 200))
+
+        actor.update(engine, 0);
+
+        expect(actor.actionQueue.getActions().length).toBe(1);
+      });
+
+      it('can add an action immediately to a non-empty queue', () => {
+        expect(actor.visible).toBe(true);
+
+        actor.actions.moveBy(200, 200, 100);
+        actor.update(engine, 0);
+
+        actor.actionQueue.addImmediately(new ex.Actions.Blink(actor, 200, 200), true);
+
+        actor.update(engine, 250);
+
+        expect(actor.visible).toBe(false);
+
+        expect(actor.actionQueue.getActions().length).toBe(2);
+      });
+
+      it('can add an action immediately and still finish the currently running action', () => {
+         expect(actor.pos.x).toBe(0);
+         
+         actor.actions.moveBy(100, 0, 100);
+         actor.actions.moveBy(200, 0, 100);
+
+         actor.update(engine, 50);
+         expect(actor.pos.x).toBe(50);
+
+         actor.actions.moveBy(300, 0, 100);
+
+         actor.update(engine, 50);
+         expect(actor.pos.x).toBe(100);
+
+         actor.update(engine, 100);
+         expect(actor.pos.x).toBe(200);
+
+         actor.update(engine, 100);
+         expect(actor.pos.x).toBe(300);
+       });
    });
 
    describe('blink', () => {

@@ -995,6 +995,20 @@ export class ActionQueue {
       this._actions.push(action);
    }
 
+   /**
+    * Adds an action to the ActionQueue's beginning.
+    * If desired, the currently running action can be cancelled.
+    * @param action IAction
+    * @param cancelCurrentAction boolean
+    */
+    public addImmediately(action: IAction, cancelCurrentAction: boolean = false) {
+      this._actions.unshift(action);
+
+      if (cancelCurrentAction && this._currentAction) {
+         this._currentAction.stop();
+      }
+   }
+
    public remove(action: IAction) {
       var index = this._actions.indexOf(action);
       this._actions.splice(index, 1);

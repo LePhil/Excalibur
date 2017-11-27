@@ -5,10 +5,12 @@ describe('A Timer', () => {
    var timer;
    var scene: ex.Scene;
    var engine: ex.Engine;
-   var mock = new Mocks.Mocker();
 
    beforeEach(() => {
-      engine = mock.engine(0, 0);
+      engine = TestUtils.engine({
+         width: 600,
+         height: 400
+      });
       timer = new ex.Timer(function() { /*do nothing*/ }, 500);     
       scene = new ex.Scene(engine);
       engine.currentScene = scene;
@@ -45,6 +47,12 @@ describe('A Timer', () => {
       expect(count).toBe(3);
    });
 
+   it('can return how long it has been running', () => {
+      timer.update(372);
+
+      expect(timer.getTimeRunning()).toEqual(372);
+   });
+
    it('can be canceled', () => {
       var count = 0;
       timer = new ex.Timer(function(){ count++; }, 500, true);
@@ -61,7 +69,7 @@ describe('A Timer', () => {
       expect(count).toBe(3);
    });
 
-   it('is removed from the scene when it is completed', () => {
+   it('is no longer active in the scene when it is completed', () => {
       scene.addTimer(timer);
 
       expect(scene.isTimerActive(timer)).toBeTruthy();
@@ -95,6 +103,107 @@ describe('A Timer', () => {
       expect(count).toBe(3);
       expect(timer.repeats).toBeTruthy();
       expect(timer.complete).toBeFalsy();
+   });
+
+   it('can be reset at the same interval', () => {
+      var count = 0;
+      // non-repeating timer
+      timer = new ex.Timer(function(){ count++; }, 500, false);
+      scene.add(timer);
+
+      // tick the timer
+      scene.update(engine, 501);
+      expect(count).toBe(1);
+
+      // tick the timer again, but it shouldn't fire until reset
+      scene.update(engine, 501);
+      expect(count).toBe(1);
+      expect(timer.complete).toBe(true);
+
+      // once reset the timer should fire again
+      timer.reset();
+      expect(timer.complete).toBe(false);
+      scene.update(engine, 501);
+      expect(count).toBe(2);
+   });
+
+   it('can be reset at a different interval', () => {
+      var count = 0;
+      // non-repeating timer
+      timer = new ex.Timer(function(){ count++; }, 500, false);
+      scene.add(timer);
+
+      // tick the timer
+      scene.update(engine, 501);
+      expect(count).toBe(1);
+
+      // tick the timer again, but it shouldn't fire until reset
+      scene.update(engine, 501);
+      expect(count).toBe(1);
+      expect(timer.complete).toBe(true);
+
+      // once reset at a larger the timer should fire again
+      timer.reset(900);
+      expect(timer.complete).toBe(false);
+      scene.update(engine, 901);
+      expect(count).toBe(2);
+   });
+
+   it('can be reset on a repeating timer', () => {
+      var count = 0;
+      // non-repeating timer
+      timer = new ex.Timer(function(){ count++; }, 500, true);
+      scene.add(timer);
+
+      // tick the timer
+      scene.update(engine, 501);
+      expect(count).toBe(1);
+
+      timer.reset(30);
+
+      for (var i = 0; i < 100; i++) {
+         scene.update(engine, 31);
+         expect(count).toBe(2 + i);
+         expect(timer.complete).toBe(false);
+      }
+   });
+
+   it('can be paused', () => {
+
+      var count = 0;
+      // arrange
+      var timer = new ex.Timer(() => {
+         count++;
+      }, 100, true);
+      scene.add(timer);
+
+      // act
+      timer.pause();
+      scene.update(engine, 200);
+
+      // assert
+      expect(count).toBe(0);
+      expect(timer.complete).toBe(false);
+   });
+
+   it('can be unpaused', () => {
+      var count = 0;
+      // arrange
+      var timer = new ex.Timer(() => {
+         count++;
+      }, 100, true);
+      scene.add(timer);
+
+      // act
+      timer.pause();
+      scene.update(engine, 200);
+      timer.unpause();
+      scene.update(engine, 100);
+      scene.update(engine, 100); 
+
+      // assert
+      expect(count).toBe(2);
+      expect(timer.complete).toBe(false);
    });
 
 });

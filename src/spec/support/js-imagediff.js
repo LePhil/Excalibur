@@ -302,7 +302,7 @@
                 var result = {};
                 var diff = imagediff.diff(actual, expected);
 
-                result.pass = imagediff.equal(actual, expected, 0);
+                result.pass = imagediff.equal(actual, expected, 70);
 
                 can.height = diff.height;
                 can.width  = diff.width;
@@ -449,7 +449,7 @@
          copyCtx = null;
          done();
       });
-       a.src = './src/spec/images/' + src;
+       a.src = './base/src/spec/images/' + src + '?_=' + Math.random();
     },
 
     expectCanvasImageMatches : function(src, canvas, done) {
@@ -468,7 +468,7 @@
          copyCtx = null;
          done();
       });
-       a.src = './src/spec/images/' + src;
+       a.src = './base/src/spec/images/' + src + '?_=' + Math.random();
     },
 
     // Compatibility

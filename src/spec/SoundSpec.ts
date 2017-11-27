@@ -144,6 +144,16 @@ describe('Sound resource', () => {
          
          expect(audioInstance.volume).toBe(0.5);
       });
+      
+      it('should set volume with argument sent to play', () => {
+         var audioInstance = new MockAudioInstance();
+         
+         spyOn(audioMock, 'createInstance').and.returnValue(audioInstance);
+
+         sut.play(0.5);
+         
+         expect(audioInstance.volume).toBe(0.5);
+      });
 
       it('should play once and then finish', (done) => {
          sut.play().then(() => {            
@@ -288,7 +298,7 @@ describe('Sound resource', () => {
 
 class MockAudioImplementation implements ex.IAudioImplementation {
    public responseType = 'test';
-   public processData(data: any) {
+   public processData(data: any): ex.Promise<any> {
       return ex.Promise.resolve(data);
    }
    public createInstance(): ex.IAudio {
@@ -320,7 +330,7 @@ class MockAudioInstance implements ex.IAudio {
       return this._isPlaying; 
    }
 
-   play() {
+   play(): ex.Promise<boolean> {
       
       if (!this._isPlaying) {
          this._isPlaying = true;

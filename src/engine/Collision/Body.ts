@@ -1,14 +1,18 @@
+import { Engine } from '../Engine';
+
 import { Physics, CollisionResolutionStrategy } from './../Physics';
 import { EdgeArea } from './EdgeArea';
 import { CircleArea } from './CircleArea';
 import { ICollisionArea } from './ICollisionArea';
 import { PolygonArea } from './PolygonArea';
 import { BoundingBox } from './BoundingBox';
+import { Pair } from './Pair';
 
 import { Vector } from '../Algebra';
 import { Actor } from '../Actor';
 import { Color } from '../Drawing/Color';
 import * as DrawUtil from '../Util/DrawUtil';
+import { obsolete } from '../Util/Decorators';
 
 export class Body {
 
@@ -228,4 +232,42 @@ export class Body {
          this.collisionArea.debugDraw(ctx, Color.Green);
       }
    }
-}   
+   
+   /**
+    * Returns a boolean indicating whether this body collided with 
+    * or was in stationary contact with
+    * the body of the other [[Actor]]
+    */
+   public touching(other: Actor): boolean {
+     
+     var pair = new Pair(this, other.body);
+     pair.collide();
+     
+     if (pair.collision) {
+       return true;
+     }
+     
+     return false;
+   }
+   
+   /**
+    * Returns a boolean indicating true if this body COLLIDED with 
+    * the body of the other Actor in the last frame, and they are no longer touching
+    * in this frame 
+    */
+   @obsolete({message: 'will be removed in v0.14, use the collisionend event instead'})
+   public wasTouching(other: Actor, game: Engine): boolean {
+     
+     var pair = new Pair(this, other.body);
+     var wasTouchingLastFrame = false;
+     
+     if (game && game.stats.prevFrame && game.stats.prevFrame.physics.collidersHash[pair.id]) {
+         wasTouchingLastFrame = true;
+     }
+     
+     var currentlyTouching = this.touching(other);
+     
+     return wasTouchingLastFrame && !currentlyTouching;
+     
+   }
+}

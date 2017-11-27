@@ -4,7 +4,8 @@ import { BoundingBox } from './Collision/BoundingBox';
 import { Texture } from './Resources/Texture';
 import {
    InitializeEvent, KillEvent, PreUpdateEvent, PostUpdateEvent,
-   PreDrawEvent, PostDrawEvent, PreDebugDrawEvent, PostDebugDrawEvent, GameEvent
+   PreDrawEvent, PostDrawEvent, PreDebugDrawEvent, PostDebugDrawEvent, 
+   GameEvent, CollisionEvent, PostCollisionEvent, PreCollisionEvent, CollisionStartEvent, CollisionEndEvent
 } from './Events';
 import { Engine } from './Engine';
 import { Color } from './Drawing/Color';
@@ -106,7 +107,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * Sets the position vector of the actor in pixels
     */
    public set pos(thePos: Vector) {
-      this.body.pos = thePos;
+      this.body.pos.setTo(thePos.x, thePos.y);
    }
 
    /**
@@ -120,7 +121,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * Sets the position vector of the actor in the last frame
     */
    public set oldPos(thePos: Vector) {
-      this.body.oldPos = thePos;
+      this.body.oldPos.setTo(thePos.x, thePos.y);
    }
 
    /**
@@ -134,7 +135,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * Sets the velocity vector of the actor in pixels/sec
     */
    public set vel(theVel: Vector) {
-      this.body.vel = theVel;
+      this.body.vel.setTo(theVel.x, theVel.y);
    }
 
    /**
@@ -148,7 +149,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * Sets the velocity vector of the actor from the last frame
     */
    public set oldVel(theVel: Vector) {
-      this.body.oldVel = theVel;
+      this.body.oldVel.setTo(theVel.x, theVel.y);
    }
 
    /**
@@ -163,7 +164,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * Sets the acceleration vector of teh actor in pixels/second/second
     */
    public set acc(theAcc: Vector) {
-      this.body.acc = theAcc;
+      this.body.acc.setTo(theAcc.x, theAcc.y);
    }
 
    /** 
@@ -268,7 +269,7 @@ export class Actor extends Class implements IActionable, IEvented {
 
    /**
     * The anchor to apply all actor related transformations like rotation,
-    * translation, and rotation. By default the anchor is in the center of
+    * translation, and scaling. By default the anchor is in the center of
     * the actor. By default it is set to the center of the actor (.5, .5)
     * 
     * An anchor of (.5, .5) will ensure that drawings are centered.
@@ -367,7 +368,13 @@ export class Actor extends Class implements IActionable, IEvented {
     * 
     * The default is `null` which prevents a rectangle from being drawn.
     */
-   public color: Color;
+   public get color() : Color {
+      return this._color;
+   }
+   public set color(v : Color) {
+      this._color = v.clone();
+   }
+   private _color : Color;
 
    /**
     * Whether or not to enable the [[CapturePointer]] trait that propagates 
@@ -401,7 +408,7 @@ export class Actor extends Class implements IActionable, IEvented {
       this._width = width || 0;
       this._height = height || 0;
       if (color) {
-         this.color = color.clone();
+         this.color = color;
          // set default opacity of an actor to the color
          this.opacity = color.a;
       }
@@ -465,6 +472,11 @@ export class Actor extends Class implements IActionable, IEvented {
       }
    }
 
+   public on(eventName: Events.collisionstart, handler: (event?: CollisionStartEvent) => void): void;
+   public on(eventName: Events.collisionend, handler: (event?: CollisionEndEvent) => void): void;
+   public on(eventName: Events.precollision, handler: (event?: PreCollisionEvent) => void): void;
+   public on(eventName: Events.collision, handler: (event?: CollisionEvent) => void): void;
+   public on(eventName: Events.postcollision, handler: (event?: PostCollisionEvent) => void): void;
    public on(eventName: Events.kill, handler: (event?: KillEvent) => void): void;
    public on(eventName: Events.initialize, handler: (event?: InitializeEvent) => void): void;
    public on(eventName: Events.preupdate, handler: (event?: PreUpdateEvent) => void): void;
@@ -477,10 +489,35 @@ export class Actor extends Class implements IActionable, IEvented {
    public on(eventName: Events.pointerdown, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointermove, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointercancel, handler: (event?: PointerEvent) => void): void;
+   public on(eventName: Events.pointerwheel, handler: (event?: WheelEvent) => void): void;
    public on(eventName: string, handler: (event?: GameEvent<any>) => void): void;
    public on(eventName: string, handler: (event?: GameEvent<any>) => void): void {
       this._checkForPointerOptIn(eventName);
       this.eventDispatcher.on(eventName, handler);
+   }
+
+   public once(eventName: Events.collisionstart, handler: (event?: CollisionStartEvent) => void): void;
+   public once(eventName: Events.collisionend, handler: (event?: CollisionEndEvent) => void): void;
+   public once(eventName: Events.precollision, handler: (event?: PreCollisionEvent) => void): void;
+   public once(eventName: Events.collision, handler: (event?: CollisionEvent) => void): void;
+   public once(eventName: Events.postcollision, handler: (event?: PostCollisionEvent) => void): void;
+   public once(eventName: Events.kill, handler: (event?: KillEvent) => void): void;
+   public once(eventName: Events.initialize, handler: (event?: InitializeEvent) => void): void;
+   public once(eventName: Events.preupdate, handler: (event?: PreUpdateEvent) => void): void;
+   public once(eventName: Events.postupdate, handler: (event?: PostUpdateEvent) => void): void;
+   public once(eventName: Events.predraw, handler: (event?: PreDrawEvent) => void): void;
+   public once(eventName: Events.postdraw, handler: (event?: PostDrawEvent) => void): void;
+   public once(eventName: Events.predebugdraw, handler: (event?: PreDebugDrawEvent) => void): void;
+   public once(eventName: Events.postdebugdraw, handler: (event?: PostDebugDrawEvent) => void): void;
+   public once(eventName: Events.pointerup, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointerdown, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointermove, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointercancel, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointerwheel, handler: (event?: WheelEvent) => void): void;
+   public once(eventName: string, handler: (event?: GameEvent<any>) => void): void;
+   public once(eventName: string, handler: (event?: GameEvent<any>) => void): void {
+      this._checkForPointerOptIn(eventName);
+      this.eventDispatcher.once(eventName, handler);
    }
 
    /**
@@ -528,7 +565,7 @@ export class Actor extends Class implements IActionable, IEvented {
     * @param actor The child actor to remove
     */
    public remove(actor: Actor) {
-      if (Util.removeItemToArray(actor, this.children)) {
+      if (Util.removeItemFromArray(actor, this.children)) {
          actor.parent = null;
       }
    }
@@ -1107,13 +1144,6 @@ export enum CollisionType {
     * the `Active` or `Fixed` setting.
     */
    Active,
-   /**
-    * Actors with the `Elastic` setting will behave the same as `Active`, except that they will
-    * "bounce" in the opposite direction given their velocity dx/dy. This is a naive implementation meant for
-    * prototyping, for a more robust elastic collision listen to the "collision" event and perform your custom logic.
-    * @obsolete This behavior will be handled by a future physics system
-    */
-   Elastic,
    /**
     * Actors with the `Fixed` setting raise collision events and participate in
     * collisions with other actors. Actors with the `Fixed` setting will not be

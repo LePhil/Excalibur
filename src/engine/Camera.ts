@@ -50,12 +50,11 @@ export class BaseCamera {
    private _yShake: number = 0;
 
    protected _isZooming: boolean = false;
-   private _currentZoomScale: number = 1;
    private _maxZoomScale: number = 1;
-   private _zoomDuration: number = 0;
+   private _zoomPromise: Promise<boolean>;
    private _zoomIncrement: number = 0.01;
    private _easing: EasingFunction = EasingFunctions.EaseInOutCubic;
-
+ 
    /**
     * Get the camera's x position
     */
@@ -86,14 +85,6 @@ export class BaseCamera {
       if (!this._follow && !this._cameraMoving) {
          this._y = value;
       }
-   }
-
-   /**
-    * Sets the [[Actor]] to follow with the camera
-    * @param actor  The actor to follow
-    */
-   public setActorToFollow(actor: Actor) {
-      this._follow = actor;
    }
 
    /**
@@ -158,27 +149,21 @@ export class BaseCamera {
     * @param scale    The scale of the zoom
     * @param duration The duration of the zoom in milliseconds
     */
-   public zoom(scale: number, duration: number = 0) {
-      this._isZooming = true;
-      this._maxZoomScale = scale;
-      this._zoomDuration = duration;
+   public zoom(scale: number, duration: number = 0): Promise<boolean> {
+      this._zoomPromise = new Promise<boolean>();
+      
       if (duration) {
-         this._zoomIncrement = Math.abs(this._maxZoomScale - this._currentZoomScale) / duration * 1000;
+         this._isZooming = true;
+         this._maxZoomScale = scale;
+         this._zoomIncrement = (scale - this.z) / duration;
+      } else {
+         this._isZooming = false;
+         this.z = scale;
+         this._zoomPromise.resolve(true);
+         
       }
 
-      if (this._maxZoomScale < 1) {
-         if (duration) {
-            this._zoomIncrement = -1 * this._zoomIncrement;
-         } else {
-            this._isZooming = false;
-            this._setCurrentZoomScale(this._maxZoomScale);
-         }
-      } else {
-         if (!duration) {
-            this._isZooming = false;
-            this._setCurrentZoomScale(this._maxZoomScale);
-         }
-      }
+      return this._zoomPromise;
    }
 
    /**
@@ -186,10 +171,6 @@ export class BaseCamera {
     */
    public getZoom() {
       return this.z;
-   }
-
-   private _setCurrentZoomScale(zoomScale: number) {
-      this.z = zoomScale;
    }
 
    public update(_engine: Engine, delta: number) {
@@ -203,6 +184,25 @@ export class BaseCamera {
       this.dz += this.az * delta / 1000;
 
       this.rotation += this.rx * delta / 1000;
+
+      if (this._isZooming) {
+         var newZoom = this.z + this._zoomIncrement * delta;      
+         this.z = newZoom;
+         if (this._zoomIncrement > 0) {
+               
+            if (newZoom >= this._maxZoomScale) {
+               this._isZooming = false;
+               this.z = this._maxZoomScale;
+               this._zoomPromise.resolve(true);
+            }
+         } else {
+            if (newZoom <= this._maxZoomScale) {
+               this._isZooming = false;
+               this.z = this._maxZoomScale;
+               this._zoomPromise.resolve(true);
+            }
+         }         
+      }
 
       if (this._cameraMoving) {
          if (this._currentLerpTime < this._lerpDuration) {
@@ -255,28 +255,16 @@ export class BaseCamera {
     * @param delta  The number of milliseconds since the last update
     */
    public draw(ctx: CanvasRenderingContext2D) {
-      var focus = this.getFocus();
-      var canvasWidth = ctx.canvas.width;
-      var canvasHeight = ctx.canvas.height;
+      let focus = this.getFocus();
+      let canvasWidth = ctx.canvas.width;
+      let canvasHeight = ctx.canvas.height;
+      let pixelRatio = window.devicePixelRatio;
+      let zoom = this.getZoom();
 
-      // if zoom is 2x then canvas is 1/2 as high
-      // if zoom is .5x then canvas is 2x as high
-      var newCanvasWidth = canvasWidth / this.getZoom();
-      var newCanvasHeight = canvasHeight / this.getZoom();
+      var newCanvasWidth = (canvasWidth / zoom) / pixelRatio;
+      var newCanvasHeight = (canvasHeight / zoom) / pixelRatio;
 
-      /*if (this._isDoneZooming()) {
-         this._isZooming = false;
-         this._elapsedZoomTime = 0;
-         this._zoomDuration = 0;
-         this._setCurrentZoomScale(this._maxZoomScale);
-
-      } else {
-         this._elapsedZoomTime += delta;
-
-         this._setCurrentZoomScale(this.getZoom() + this._zoomIncrement * delta / 1000);
-      }*/
-
-      ctx.scale(this.getZoom(), this.getZoom());
+      ctx.scale(zoom, zoom);
       ctx.translate(-focus.x + newCanvasWidth / 2 + this._xShake, -focus.y + newCanvasHeight / 2 + this._yShake);
    }
 
@@ -307,6 +295,13 @@ export class BaseCamera {
  * Common usages: platformers.
  */
 export class SideCamera extends BaseCamera {
+   /**
+    * Sets the [[Actor]] to follow with the camera
+    * @param actor  The actor to follow
+    */
+   public setActorToFollow(actor: Actor) {
+      this._follow = actor;
+   }
 
    public getFocus() {
       if (this._follow) {
@@ -325,6 +320,13 @@ export class SideCamera extends BaseCamera {
  * Common usages: RPGs, adventure games, top-down games.
  */
 export class LockedCamera extends BaseCamera {
+   /**
+    * Sets the [[Actor]] to follow with the camera
+    * @param actor  The actor to follow
+    */
+   public setActorToFollow(actor: Actor) {
+      this._follow = actor;
+   }
 
    public getFocus() {
       if (this._follow) {

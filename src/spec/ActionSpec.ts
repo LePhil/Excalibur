@@ -64,20 +64,38 @@ describe('Action', () => {
       });   
    });
 
+   describe('color', () => {
+      it('is cloned from constructor', () => {
+         const color = ex.Color.Azure;
+         const sut = new ex.Actor(null, null, null, null, color);
+
+         expect(sut.color).not.toBe(color, 'Color is not expected to be same instance');
+      });
+
+      it('is cloned from property setter', () => {
+         const color = ex.Color.Azure;
+         const sut = new ex.Actor();
+
+         sut.color = color;
+
+         expect(sut.color).not.toBe(color, 'Color is not expected to be same instance');
+      });
+   });
+
    describe('die', () => {
       it('can remove actor from scene', () => {
          scene.add(actor);
-         expect(scene.children.length).toBe(1);
+         expect(scene.actors.length).toBe(1);
          actor.actions.die();
          scene.update(engine, 100);
-         expect(scene.children.length).toBe(0);
+         expect(scene.actors.length).toBe(0);
       });
 
       it('can perform actions and then die', () => {
          scene.add(actor);
          expect(actor.pos.x).toBe(0);
          expect(actor.pos.y).toBe(0);
-         expect(scene.children.length).toBe(1);
+         expect(scene.actors.length).toBe(1);
 
          actor.actions.moveTo(100, 0, 100).delay(1000).die();
          actor.update(engine, 1000);
@@ -91,7 +109,7 @@ describe('Action', () => {
 
          actor.update(engine, 1000);
          scene.update(engine, 100);
-         expect(scene.children.length).toBe(0);
+         expect(scene.actors.length).toBe(0);
       });   
    });
 

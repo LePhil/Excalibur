@@ -10,10 +10,6 @@ There are several ways you can download Excalibur.
 
     npm install excalibur
 
-**Bower**::
-
-    bower install excalibur
-    
 **Nuget**::
 
     Install-Package Excalibur
@@ -28,13 +24,13 @@ up a blank, ready-to-go Excalibur game:
    # Install Yeoman globally
    npm install -g yo
    # Install the Excalibur generator globally
-   npm install -g generator-excalibur
+   npm install -g @excaliburjs/generator-excalibur
    # Create the folder you want your game to be in
    mkdir my-game
    # Go into the folder
    cd my-game
    # Run the excalibur generator
-   yo excalibur
+   yo @excaliburjs/excalibur
 
 The Yeoman generator will automatically create the appropriate package.json and bower.json files and install
 the needed dependencies for your project.

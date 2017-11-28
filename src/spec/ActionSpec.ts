@@ -43,7 +43,7 @@ describe('Action', () => {
       });
 
       it('can add an action immediately to an empty queue', () => {
-        actor.actionQueue.addImmediately(new ex.Actions.Blink(actor, 200, 200))
+        actor.actionQueue.addImmediately(new ex.Actions.Blink(actor, 200, 200));
 
         actor.update(engine, 0);
 
@@ -85,6 +85,35 @@ describe('Action', () => {
          actor.update(engine, 100);
          expect(actor.pos.x).toBe(300);
        });
+   });
+
+   describe('callMethod', () => {
+      it('can call a method', () => {
+         let x = 0;
+
+         actor.actions.callMethod(() => {
+            x++;
+         });
+
+         actor.update(engine, 0);
+         expect(x).toBe(1);
+      });
+
+      it('can be queued', () => {
+         let x = 0;
+
+         actor.actions.callMethod(() => {
+            x++;
+         });
+         actor.actions.callMethod(() => {
+            x++;
+         });
+
+         actor.update(engine, 0);
+         actor.update(engine, 0);
+         expect(x).toBe(2);
+
+      });
    });
 
    describe('blink', () => {

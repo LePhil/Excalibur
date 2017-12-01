@@ -175,10 +175,11 @@ export class MoveBy implements IAction {
       }
 
       var m = this._dir.scale(this._speed);
-      this._actor.vel.x = m.x;
-      this._actor.vel.y = m.y;
+      //this._actor.vel.x = m.x;
+      //this._actor.vel.y = m.y;
+      this._actor.pos.x += m.x * _delta / 1000;
+      this._actor.pos.y += m.y * _delta / 1000;
 
-      
       if (this.isComplete(this._actor)) {
          this._actor.pos.x = this._end.x;
          this._actor.pos.y = this._end.y;
@@ -1041,13 +1042,16 @@ export class ActionQueue {
    }
 
    public update(delta: number) {
-      if (this._actions.length > 0) {
-         this._currentAction = this._actions[0];
-         this._currentAction.update(delta);
-
-         if (this._currentAction.isComplete(this._actor)) {
-            this._completedActions.push(this._actions.shift());
+      //do {
+         if (this._actions.length > 0) {
+            this._currentAction = this._actions[0];
+            this._currentAction.update(delta/* > 0 ? 1 : 0*/);
+   
+            if (this._currentAction.isComplete(this._actor)) {
+               this._completedActions.push(this._actions.shift());
+            }
          }
-      }
+      //   delta--;
+      //} while (delta > 0);
    }
 }

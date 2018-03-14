@@ -27,3 +27,5 @@ actor.add(emitter);
 // or, alternatively, add it to the current scene
 engine.add(emitter);
 ```
+
+Note: When overriding the draw method, make sure to call ```super.draw``` or draw all of the actor's children manually.

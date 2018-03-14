@@ -1,4 +1,5 @@
-
+import { Engine } from 'Engine';
+import * as Util from 'Util/Util';
 
 /**
  * A 2D vector on a plane.
@@ -357,6 +358,13 @@ export class Line {
    }
 
    /**
+    * Gets the normal of the line
+    */
+   public normal(): Vector {
+      return this.end.sub(this.begin).normal();
+   }
+
+   /**
     * Returns the slope of the line in the form of a vector
     */
    public getSlope(): Vector {
@@ -377,6 +385,23 @@ export class Line {
    }
 
    /**
+    * Find the perpendicular distance from the line to a point
+    * https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+    * @param point 
+    */
+   public distanceToPoint(point: Vector) {
+      let x0 = point.x;
+      let y0 = point.y;
+
+      let l = this.getLength();
+
+      let dy = this.end.y - this.begin.y;
+      let dx = this.end.x - this.begin.x;
+      let distance = Math.abs(dy * x0 - dx * y0 + this.end.x * this.begin.y - this.end.y * this.begin.x) / l;
+      return distance;
+   }
+
+   /**
     * Finds a point on the line given only an X or a Y value. Given an X value, the function returns
     * a new point with the calculated Y value and vice-versa.
     *
@@ -393,7 +418,7 @@ export class Line {
       } else if (y !== null) {
          return new Vector((y - b) / m, y);
       } else {
-        throw new Error('You must provide an X or a Y value');
+         throw new Error('You must provide an X or a Y value');
       }
    }
 
@@ -474,4 +499,36 @@ export class Projection {
       }
       return 0;
    }
+}
+
+export class GlobalCoordinates {
+   public static fromPagePosition(x: number, y: number, engine: Engine): GlobalCoordinates;
+   public static fromPagePosition(pos: Vector, engine: Engine): GlobalCoordinates;
+   public static fromPagePosition(xOrPos: number | Vector, yOrEngine: number | Engine, engineOrUndefined?: Engine): GlobalCoordinates {
+      var pageX: number;
+      var pageY: number;
+      var pagePos: Vector;
+      var engine: Engine;
+
+      if (arguments.length === 3) {
+         pageX = <number>xOrPos;
+         pageY = <number>yOrEngine;
+         pagePos = new Vector(pageX, pageY);
+         engine = engineOrUndefined;
+      } else {
+         pagePos = <Vector>xOrPos;
+         pageX = pagePos.x;
+         pageY = pagePos.y;
+         engine = <Engine>yOrEngine;
+      }
+
+      var screenX: number = pageX - Util.getPosition(engine.canvas).x;
+      var screenY: number = pageY - Util.getPosition(engine.canvas).y;
+      var screenPos = new Vector(screenX, screenY);
+      var worldPos = engine.screenToWorldCoordinates(screenPos);
+
+      return new GlobalCoordinates(worldPos, pagePos, screenPos);
+   }
+
+   constructor(public worldPos: Vector, public pagePos: Vector, public screenPos: Vector) { }
 }

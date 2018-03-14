@@ -95,7 +95,7 @@ export class Scene extends Class {
    public on(eventName: Events.predebugdraw, handler: (event?: PreDebugDrawEvent) => void): void;
    public on(eventName: Events.postdebugdraw, handler: (event?: PostDebugDrawEvent) => void): void;
    public on(eventName: string, handler: (event?: GameEvent<any>) => void): void;
-   public on(eventName: string, handler: (event?: GameEvent<any>) => void): void {
+   public on(eventName: string, handler: (event?: any) => void): void {
       super.on(eventName, handler);
    }
 
@@ -170,9 +170,7 @@ export class Scene extends Class {
       this.emit('preupdate', new PreUpdateEvent(engine, delta, this));
       var i: number, len: number;
 
-      if (this.camera) {
-         this.camera.update(engine, delta);
-      }
+      
 
       // Remove timers in the cancel queue before updating them
       for (i = 0, len = this._cancelQueue.length; i < len; i++) {
@@ -237,6 +235,10 @@ export class Scene extends Class {
 
       this._processKillQueue(this._killQueue, this.actors);
       this._processKillQueue(this._triggerKillQueue, this.triggers);
+
+      if (this.camera) {
+         this.camera.update(engine, delta);
+      }
 
       this.emit('postupdate', new PostUpdateEvent(engine, delta, this));
    }

@@ -22,7 +22,6 @@ import * as Input from './Input/Index';
 import * as Util from './Util/Util';
 import * as Events from './Events';
 import { BoundingBox } from './Collision/BoundingBox';
-import { obsolete } from './Util/Decorators';
 
 /**
  * Enum representing the different display modes available to Excalibur
@@ -205,16 +204,6 @@ export class Engine extends Class {
    }
 
    /**
-    * Returns the width of the engine's visible drawing surface in pixels including zoom including device pixel ratio.
-    */
-   @obsolete({ message: 'getDrawWidth() will be removed in the 0.14 release', 
-               alternateMethod: 'drawWidth property'
-   })
-   public getDrawWidth(): number {
-      return this.drawWidth;
-   }
-
-   /**
     * Returns the width of the engine's visible drawing surface in pixels including zoom and device pixel ratio.
     */
     public get drawWidth(): number {
@@ -229,16 +218,6 @@ export class Engine extends Class {
     */
    public get halfDrawWidth(): number {
       return this.drawWidth / 2;
-   }
-
-   /**
-    * Returns the height of the engine's visible drawing surface in pixels .
-    */
-    @obsolete({ message: 'getDrawHeight() will be removed in the 0.14 release', 
-                alternateMethod: 'drawHeight property'
-   })
-   public getDrawHeight(): number {
-      return this.drawHeight;
    }
 
    /**
@@ -383,7 +362,7 @@ export class Engine extends Class {
    public on(eventName: Events.predraw, handler: (event?: PreDrawEvent) => void): void;
    public on(eventName: Events.postdraw, handler: (event?: PostDrawEvent) => void): void;
    public on(eventName: string, handler: (event?: GameEvent<any>) => void): void;
-   public on(eventName: string, handler: (event?: GameEvent<any>) => void): void {
+   public on(eventName: string, handler: (event?: any) => void): void {
       super.on(eventName, handler);
    }
 
@@ -907,9 +886,9 @@ O|===|* >________________>\n\
        
       // initialize inputs
       this.input = {
-         keyboard: new Input.Keyboard(this),
+         keyboard: new Input.Keyboard(),
          pointers: new Input.Pointers(this),
-         gamepads: new Input.Gamepads(this)
+         gamepads: new Input.Gamepads()
       };
       this.input.keyboard.init();
       this.input.pointers.init(options && options.pointerScope === Input.PointerScope.Document ? document : this.canvas);
@@ -1108,8 +1087,6 @@ O|===|* >________________>\n\
       this.input.gamepads.update();
 
       // Publish update event
-      // TODO: Obsolete `update` event on Engine
-      this.eventDispatcher.emit('update', new PostUpdateEvent(this, delta, this));
       this.emit('postupdate', new PostUpdateEvent(this, delta, this));
    }
 

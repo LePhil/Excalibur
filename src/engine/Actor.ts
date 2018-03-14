@@ -4,9 +4,10 @@ import { BoundingBox } from './Collision/BoundingBox';
 import { Texture } from './Resources/Texture';
 import {
    InitializeEvent, KillEvent, PreUpdateEvent, PostUpdateEvent,
-   PreDrawEvent, PostDrawEvent, PreDebugDrawEvent, PostDebugDrawEvent, 
-   GameEvent, CollisionEvent, PostCollisionEvent, PreCollisionEvent, CollisionStartEvent, CollisionEndEvent
+   PreDrawEvent, PostDrawEvent, PreDebugDrawEvent, PostDebugDrawEvent,
+   GameEvent, PostCollisionEvent, PreCollisionEvent, CollisionStartEvent, CollisionEndEvent
 } from './Events';
+import { PointerEvent, PointerDragEvent } from './Input/Pointer';
 import { Engine } from './Engine';
 import { Color } from './Drawing/Color';
 import { Sprite } from './Drawing/Sprite';
@@ -22,21 +23,40 @@ import { Body } from './Collision/Body';
 import { Side } from './Collision/Side';
 import { IEvented } from './Interfaces/IEvented';
 import { IActionable } from './Actions/IActionable';
+import { Configurable } from './Configurable';
 import * as Traits from './Traits/Index';
 import * as Effects from './Drawing/SpriteEffects';
 import * as Util from './Util/Util';
 import * as Events from './Events';
 
+export type PointerEventName = 'pointerdragstart'
+   | 'pointerdragend' | 'pointerdragmove' | 'pointerdragenter'
+   | 'pointerdragleave' | 'pointermove' | 'pointerenter'
+   | 'pointerleave' | 'pointerup' | 'pointerdown';
+
+
 /**
- * The most important primitive in Excalibur is an `Actor`. Anything that
- * can move on the screen, collide with another `Actor`, respond to events, 
- * or interact with the current scene, must be an actor. An `Actor` **must**
- * be part of a [[Scene]] for it to be drawn to the screen.
- *
- * [[include:Actors.md]]
- *
+ * [[include:Constructors.md]]
  */
-export class Actor extends Class implements IActionable, IEvented {
+export interface IActorArgs extends Partial<ActorImpl> {
+   width?: number;
+   height?: number;
+   pos?: Vector;
+   vel?: Vector;
+   acc?: Vector;
+   rotation?: number;
+   rx?: number;
+   z?: number;
+   color?: Color;
+   visible?: boolean;
+   body?: Body;
+   collisionType?: CollisionType;
+}
+
+/**
+ * @hidden
+ */
+export class ActorImpl extends Class implements IActionable, IEvented {
    /**
     * Indicates the next id to be set
     */
@@ -44,7 +64,7 @@ export class Actor extends Class implements IActionable, IEvented {
    /**
     * The unique identifier for the actor
     */
-   public id: number = Actor.maxId++;
+   public id: number = ActorImpl.maxId++;
 
    /**
     * The physics body the is associated with this actor. The body is the container for all physical properties, like position, velocity,
@@ -299,7 +319,7 @@ export class Actor extends Class implements IActionable, IEvented {
    /**
     * Indicates whether the actor is physically in the viewport
     */
-   public isOffScreen = false;
+   public isOffScreen: boolean = false;
    /** 
     * The visibility of an actor
     */
@@ -368,13 +388,13 @@ export class Actor extends Class implements IActionable, IEvented {
     * 
     * The default is `null` which prevents a rectangle from being drawn.
     */
-   public get color() : Color {
+   public get color(): Color {
       return this._color;
    }
-   public set color(v : Color) {
+   public set color(v: Color) {
       this._color = v.clone();
    }
-   private _color : Color;
+   private _color: Color;
 
    /**
     * Whether or not to enable the [[CapturePointer]] trait that propagates 
@@ -386,7 +406,8 @@ export class Actor extends Class implements IActionable, IEvented {
     * Configuration for [[CapturePointer]] trait
     */
    public capturePointer: Traits.ICapturePointerConfig = {
-      captureMoveEvents: false
+      captureMoveEvents: false,
+      captureDragEvents: false
    };
 
    private _zIndex: number = 0;
@@ -401,9 +422,18 @@ export class Actor extends Class implements IActionable, IEvented {
     * @param color   The starting color of the actor. Leave null to draw a transparent actor. The opacity of the color will be used as the
     * initial [[opacity]].
     */
-   constructor(x?: number, y?: number, width?: number, height?: number, color?: Color) {
+   constructor(xOrConfig?: number | IActorArgs, y?: number, width?: number, height?: number, color?: Color) {
       super();
-      this.pos.x = x || 0;
+
+      if (xOrConfig && typeof xOrConfig === 'object') {
+         var config = xOrConfig;
+         xOrConfig = config.pos ? config.pos.x : config.x;
+         y = config.pos ? config.pos.y : config.y;
+         width = config.width;
+         height = config.height;
+      }
+
+      this.pos.x = <number>xOrConfig || 0;
       this.pos.y = y || 0;
       this._width = width || 0;
       this._height = height || 0;
@@ -412,6 +442,7 @@ export class Actor extends Class implements IActionable, IEvented {
          // set default opacity of an actor to the color
          this.opacity = color.a;
       }
+
       // Build default pipeline
       //this.traits.push(new ex.Traits.EulerMovement());
       // TODO: TileMaps should be converted to a collision area
@@ -460,13 +491,33 @@ export class Actor extends Class implements IActionable, IEvented {
       }
    }
 
+   private _capturePointerEvents: PointerEventName[] = [
+      'pointerup', 'pointerdown', 'pointermove', 'pointerenter', 'pointerleave',
+      'pointerdragstart', 'pointerdragend', 'pointerdragmove', 'pointerdragenter', 'pointerdragleave'
+   ];
+
+   private _captureMoveEvents: PointerEventName[] = [
+      'pointermove', 'pointerenter', 'pointerleave',
+      'pointerdragmove', 'pointerdragenter', 'pointerdragleave'
+   ];
+
+   private _captureDragEvents: PointerEventName[] = [
+      'pointerdragstart', 'pointerdragend', 'pointerdragmove', 'pointerdragenter', 'pointerdragleave'
+   ];
+
    private _checkForPointerOptIn(eventName: string) {
       if (eventName) {
-         const normalized = eventName.toLowerCase();
-         if (normalized === 'pointerup' || normalized === 'pointerdown' || normalized === 'pointermove') {
+         const normalized = <PointerEventName>eventName.toLowerCase();
+
+         if (this._capturePointerEvents.indexOf(normalized) !== -1) {
             this.enableCapturePointer = true;
-            if (normalized === 'pointermove') {
+
+            if (this._captureMoveEvents.indexOf(normalized) !== -1) {
                this.capturePointer.captureMoveEvents = true;
+            }
+
+            if (this._captureDragEvents.indexOf(normalized) !== -1) {
+               this.capturePointer.captureDragEvents = true;
             }
          }
       }
@@ -475,7 +526,6 @@ export class Actor extends Class implements IActionable, IEvented {
    public on(eventName: Events.collisionstart, handler: (event?: CollisionStartEvent) => void): void;
    public on(eventName: Events.collisionend, handler: (event?: CollisionEndEvent) => void): void;
    public on(eventName: Events.precollision, handler: (event?: PreCollisionEvent) => void): void;
-   public on(eventName: Events.collision, handler: (event?: CollisionEvent) => void): void;
    public on(eventName: Events.postcollision, handler: (event?: PostCollisionEvent) => void): void;
    public on(eventName: Events.kill, handler: (event?: KillEvent) => void): void;
    public on(eventName: Events.initialize, handler: (event?: InitializeEvent) => void): void;
@@ -487,11 +537,18 @@ export class Actor extends Class implements IActionable, IEvented {
    public on(eventName: Events.postdebugdraw, handler: (event?: PostDebugDrawEvent) => void): void;
    public on(eventName: Events.pointerup, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointerdown, handler: (event?: PointerEvent) => void): void;
+   public on(eventName: Events.pointerenter, handler: (event?: PointerEvent) => void): void;
+   public on(eventName: Events.pointerleave, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointermove, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointercancel, handler: (event?: PointerEvent) => void): void;
    public on(eventName: Events.pointerwheel, handler: (event?: WheelEvent) => void): void;
+   public on(eventName: Events.pointerdragstart, handler: (event?: PointerDragEvent) => void): void;
+   public on(eventName: Events.pointerdragend, handler: (event?: PointerDragEvent) => void): void;
+   public on(eventName: Events.pointerdragenter, handler: (event?: PointerDragEvent) => void): void;
+   public on(eventName: Events.pointerdragleave, handler: (event?: PointerDragEvent) => void): void;
+   public on(eventName: Events.pointerdragmove, handler: (event?: PointerDragEvent) => void): void;
    public on(eventName: string, handler: (event?: GameEvent<any>) => void): void;
-   public on(eventName: string, handler: (event?: GameEvent<any>) => void): void {
+   public on(eventName: string, handler: (event?: any) => void): void {
       this._checkForPointerOptIn(eventName);
       this.eventDispatcher.on(eventName, handler);
    }
@@ -499,7 +556,6 @@ export class Actor extends Class implements IActionable, IEvented {
    public once(eventName: Events.collisionstart, handler: (event?: CollisionStartEvent) => void): void;
    public once(eventName: Events.collisionend, handler: (event?: CollisionEndEvent) => void): void;
    public once(eventName: Events.precollision, handler: (event?: PreCollisionEvent) => void): void;
-   public once(eventName: Events.collision, handler: (event?: CollisionEvent) => void): void;
    public once(eventName: Events.postcollision, handler: (event?: PostCollisionEvent) => void): void;
    public once(eventName: Events.kill, handler: (event?: KillEvent) => void): void;
    public once(eventName: Events.initialize, handler: (event?: InitializeEvent) => void): void;
@@ -511,11 +567,18 @@ export class Actor extends Class implements IActionable, IEvented {
    public once(eventName: Events.postdebugdraw, handler: (event?: PostDebugDrawEvent) => void): void;
    public once(eventName: Events.pointerup, handler: (event?: PointerEvent) => void): void;
    public once(eventName: Events.pointerdown, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointerenter, handler: (event?: PointerEvent) => void): void;
+   public once(eventName: Events.pointerleave, handler: (event?: PointerEvent) => void): void;
    public once(eventName: Events.pointermove, handler: (event?: PointerEvent) => void): void;
    public once(eventName: Events.pointercancel, handler: (event?: PointerEvent) => void): void;
    public once(eventName: Events.pointerwheel, handler: (event?: WheelEvent) => void): void;
+   public once(eventName: Events.pointerdragstart, handler: (event?: PointerDragEvent) => void): void;
+   public once(eventName: Events.pointerdragend, handler: (event?: PointerDragEvent) => void): void;
+   public once(eventName: Events.pointerdragenter, handler: (event?: PointerDragEvent) => void): void;
+   public once(eventName: Events.pointerdragleave, handler: (event?: PointerDragEvent) => void): void;
+   public once(eventName: Events.pointerdragmove, handler: (event?: PointerDragEvent) => void): void;
    public once(eventName: string, handler: (event?: GameEvent<any>) => void): void;
-   public once(eventName: string, handler: (event?: GameEvent<any>) => void): void {
+   public once(eventName: string, handler: (event?: any) => void): void {
       this._checkForPointerOptIn(eventName);
       this.eventDispatcher.once(eventName, handler);
    }
@@ -803,7 +866,7 @@ export class Actor extends Class implements IActionable, IEvented {
    /**
     * Returns the actor's [[BoundingBox]] calculated for this instant in world space.
     */
-   public getBounds() {
+   public getBounds(): BoundingBox {
       // todo cache bounding box
       var anchor = this._getCalculatedAnchor();
       var pos = this.getWorldPos();
@@ -1002,12 +1065,10 @@ export class Actor extends Class implements IActionable, IEvented {
       }
 
       // Update child actors
-      for (var i = 0; i < this.children.length; i++) {         
+      for (var i = 0; i < this.children.length; i++) {
          this.children[i].update(engine, delta);
       }
 
-      // TODO: Obsolete `update` event on Actor
-      this.eventDispatcher.emit('update', new PostUpdateEvent(engine, delta, this));
       this.emit('postupdate', new PostUpdateEvent(engine, delta, this));
    }
    /**
@@ -1123,6 +1184,29 @@ export class Actor extends Class implements IActionable, IEvented {
       this.emit('postdebugdraw', new PostDebugDrawEvent(ctx, this));
    }
 }
+
+
+/**
+ * The most important primitive in Excalibur is an `Actor`. Anything that
+ * can move on the screen, collide with another `Actor`, respond to events, 
+ * or interact with the current scene, must be an actor. An `Actor` **must**
+ * be part of a [[Scene]] for it to be drawn to the screen.
+ *
+ * [[include:Actors.md]]
+ * 
+ * 
+ * [[include:Constructors.md]]
+ *
+ */
+export class Actor extends Configurable(ActorImpl) {
+   constructor();
+   constructor(config?: IActorArgs);
+   constructor(x?: number, y?: number, width?: number, height?: number, color?: Color);
+   constructor(xOrConfig?: number | IActorArgs, y?: number, width?: number, height?: number, color?: Color) {
+      super(xOrConfig, y, width, height, color);
+   }
+}
+
 
 /**
  * An enum that describes the types of collisions actors can participate in
